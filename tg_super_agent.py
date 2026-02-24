@@ -46,7 +46,7 @@ async def index_3months():
                 continue
             name = getattr(entity, 'title', str(entity.id))
             prefix = "📢 Канал" if getattr(entity, 'broadcast', False) else "👥 Группа"
-            async for msg in client.iter_messages(entity, min_date=three_months_ago, limit=300):
+            async for msg in client.iter_messages(entity, offset_date=three_months_ago, limit=300):
                 if not msg.text or len(msg.text.strip()) < 10:
                     continue
                 doc_id = f"{entity.id}_{msg.id}"
