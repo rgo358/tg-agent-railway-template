@@ -15,12 +15,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 SESSION_STRING = os.getenv('SESSION_STRING')
 API_ID_STR = os.getenv('API_ID')
 API_HASH = os.getenv('API_HASH')
-XAI_KEY = os.getenv('XAI_API_KEY')
+GROQ_KEY = os.getenv('GROQ_API_KEY')
 
 # Проверяем, что всё есть
-if not all([SESSION_STRING, API_ID_STR, API_HASH, XAI_KEY]):
+if not all([SESSION_STRING, API_ID_STR, API_HASH, GROQ_KEY]):
     logging.error("ОШИБКА: Не все переменные окружения заданы!")
     raise ValueError("Отсутствуют обязательные переменные окружения")
+logging.info(f"✅ Groq API Key установлен (бесплатный сервис!)")
 
 try:
     API_ID = int(API_ID_STR)
@@ -29,7 +30,7 @@ except ValueError:
     raise
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
-grok = OpenAI(api_key=XAI_KEY, base_url="https://api.x.ai/v1")
+groq = OpenAI(api_key=GROQ_KEY, base_url="https://api.groq.com/openai/v1")
 embedder = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
 chroma = chromadb.PersistentClient(path="./tg_memory_db_v3")
@@ -71,13 +72,22 @@ async def analyze(query):
             await client.send_message('me', "Ничего не нашёл по запросу 😕 Попробуй перефразировать")
             return
         context = "\n".join([f"[{m['prefix']} {m['chat']}] {doc}" for doc, m in zip(results['documents'][0], results['metadatas'][0])])
-        resp = grok.chat.completions.create(
-            model="grok-4",
-            messages=[{"role": "user", "content": f"Анализируй по-простому на русском с эмодзи: {query}\nКонтекст из чатов:\n{context[:30000]}"}]
-        )
-        await client.send_message('me', resp.choices[0].message.content)
+        try:
+            resp = groq.chat.completions.create(
+                model="mixtral-8x7b-32k-v0.1",
+                messages=[{"role": "user", "content": f"Анализируй по-простому на русском с эмодзи: {query}\nКонтекст из чатов:\n{context[:30000]}"}]
+            )
+            await client.send_message('me', resp.choices[0].message.content)
+        except Exception as groq_err:
+            error_msg = str(groq_err)
+            if "403" in error_msg or "credit" in error_msg.lower() or "rate" in error_msg.lower():
+                await client.send_message('me', f"⚠️ Ошибка Groq API: {error_msg[:150]}\n\nПроверь: https://console.groq.com/")
+                logging.error(f"Groq ошибка: {error_msg}")
+            else:
+                await client.send_message('me', f"❌ Ошибка анализа: {error_msg[:200]}")
+                logging.error(f"Groq ошибка: {error_msg}")
     except Exception as e:
-        await client.send_message('me', f"Ошибка анализа: {str(e)}")
+        await client.send_message('me', f"❌ Ошибка поиска: {str(e)[:200]}")
         logging.error(f"Анализ ошибка: {str(e)}")
 
 @client.on(events.NewMessage)
@@ -93,7 +103,7 @@ async def handler(event):
 async def main():
     try:
         await client.start()
-        await client.send_message('me', "✅ Агент успешно запущен в Railway!\nПиши обычным текстом в Сохранённые сообщения.\nПримеры: 'обнови базу', 'статус', 'проанализируй всё', 'что важного в крипте'")
+        await client.send_message('me', "✅ TG Agent запущен! (Groq AI - бесплатно)\nПиши в Сохранённые сообщения.\nПримеры: 'обнови', 'что нового в крипте?', 'проанализируй'")
         await index_3months()  # авто-индексация при старте
         await client.run_until_disconnected()
     except Exception as e:
