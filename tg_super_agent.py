@@ -38,8 +38,8 @@ collection = chroma.get_or_create_collection("tg_3months")
 
 async def index_3months():
     try:
-        await client.send_message('me', "🔄 Начинаю индексацию за последние 3 месяца...")
-        three_months_ago = datetime.now() - timedelta(days=90)
+        await client.send_message('me', "🔄 Начинаю индексацию за последние 30 дней...")
+        three_months_ago = datetime.now() - timedelta(days=30)
         dialogs = await client.get_dialogs(limit=200)
         total_messages = 0
         total_chats = 0
@@ -68,7 +68,7 @@ async def index_3months():
                 )
                 total_messages += 1
         
-        result = f"✅ Индексация завершена!\n📊 Обработано:\n• {total_messages} сообщений\n• {total_chats} чатов/каналов\n\nТеперь можешь задавать вопросы!"
+        result = f"✅ Индексация завершена!\n📊 Обработано за последние 30 дней:\n• {total_messages} сообщений\n• {total_chats} чатов/каналов\n\nТеперь можешь задавать вопросы!"
         await client.send_message('me', result)
         logging.info(f"Индексация завершена: {total_messages} сообщений из {total_chats} чатов")
     except Exception as e:
