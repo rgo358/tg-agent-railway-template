@@ -11,7 +11,7 @@
   },
   "variables": {
     "SESSION_STRING": {
-      "description": "Строка сессии Telegram (получи через get_session.py)",
+      "description": "Telegram сессия (из get_session.py)",
       "required": true
     },
     "API_ID": {
@@ -19,11 +19,11 @@
       "required": true
     },
     "API_HASH": {
-      "description": "API Hash из my.telegram.org (строка)",
+      "description": "API Hash из my.telegram.org",
       "required": true
     },
-    "XAI_API_KEY": {
-      "description": "Ключ от Grok API (xai-...)",
+    "GROQ_API_KEY": {
+      "description": "Ключ Groq Cloud API (gsk_...)",
       "required": true
     }
   }

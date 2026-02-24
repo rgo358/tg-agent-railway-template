@@ -41,17 +41,23 @@ async def index_3months():
         await client.send_message('me', "🔄 Начинаю индексацию за последние 3 месяца...")
         three_months_ago = datetime.now() - timedelta(days=90)
         dialogs = await client.get_dialogs(limit=200)
+        total_messages = 0
+        total_chats = 0
+        
         for dialog in dialogs:
             entity = dialog.entity
             if isinstance(entity, User):
                 continue
+            total_chats += 1
             name = getattr(entity, 'title', str(entity.id))
             prefix = "📢 Канал" if getattr(entity, 'broadcast', False) else "👥 Группа"
+            
             async for msg in client.iter_messages(entity, offset_date=three_months_ago, limit=300):
                 if not msg.text or len(msg.text.strip()) < 10:
                     continue
                 doc_id = f"{entity.id}_{msg.id}"
-                if collection.get(ids=[doc_id])['ids']:
+                existing = collection.get(ids=[doc_id])
+                if existing and existing['ids']:
                     continue
                 emb = embedder.encode(msg.text).tolist()
                 collection.add(
@@ -60,10 +66,15 @@ async def index_3months():
                     documents=[msg.text],
                     metadatas=[{"chat": name, "prefix": prefix, "date": msg.date.isoformat()}]
                 )
-        await client.send_message('me', "✅ База обновлена! Теперь пиши запросы.")
+                total_messages += 1
+        
+        result = f"✅ Индексация завершена!\n📊 Обработано:\n• {total_messages} сообщений\n• {total_chats} чатов/каналов\n\nТеперь можешь задавать вопросы!"
+        await client.send_message('me', result)
+        logging.info(f"Индексация завершена: {total_messages} сообщений из {total_chats} чатов")
     except Exception as e:
-        await client.send_message('me', f"Ошибка индексации: {str(e)}")
-        logging.error(f"Индексация ошибка: {str(e)}")
+        error_msg = str(e)
+        await client.send_message('me', f"❌ Ошибка индексации: {error_msg[:150]}")
+        logging.error(f"Индексация ошибка: {error_msg}")
 
 async def analyze(query):
     try:
@@ -94,10 +105,18 @@ async def analyze(query):
 async def handler(event):
     me = await client.get_me()
     if event.is_private and event.sender_id == me.id:
+        if not event.message.text:
+            return
         text = event.message.text.lower().strip()
-        if any(word in text for word in ["индекс", "обнови", "проиндексир", "загрузи"]):
+        
+        # Команды для переиндексации
+        reindex_keywords = ["индекс", "обнови", "перезагрузи", "заново", "загрузи", "переиндекс", "обновить базу", "обновите базу", "заново индекс"]
+        
+        if any(keyword in text for keyword in reindex_keywords):
+            await client.send_message('me', "⏳ Переиндексирую базу данных за последние 3 месяца...")
             await index_3months()
         else:
+            # Любой другой текст анализируем через AI
             await analyze(event.message.text)
 
 async def main():
