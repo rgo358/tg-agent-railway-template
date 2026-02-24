@@ -4,8 +4,7 @@
 
 ## Деплой в Railway одним кликом
 
-[![Deploy to Railway](https://railway.com/button.svg)](https://railway.app/new/template?template=https%3A%2F%2Fgithub.com%2Fтвой_юзер%2Ftg-agent-railway-template)
-
+[![Deploy to Railway](https://railway.com/button.svg)](https://github.com/rgo358/tg-agent-railway-template)
 После клика Railway попросит ввести:
 - SESSION_STRING
 - API_ID
